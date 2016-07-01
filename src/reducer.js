@@ -85,7 +85,7 @@ module.exports = (moreInitialState) => {
                 {
                     // Set logout error
                     const error = Object.assign({}, state.error, {
-                        login: true
+                        logout: true
                     });
 
                     return Object.assign({}, state, {

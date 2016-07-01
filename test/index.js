@@ -4,8 +4,6 @@
 
 const Lab = require('lab');
 const Code = require('code');
-const Redux = require('redux');
-const ThunkMiddleware = require('redux-thunk');
 const StrangeAuth = require('..');
 const Types = StrangeAuth.types;
 const Statuses = StrangeAuth.statuses;
@@ -54,6 +52,41 @@ describe('strange-auth', () => {
     });
 
     describe('makeActions()', () => {
+
+        it('complains if you don\'t implement login', (done) => {
+
+            expect(() => {
+
+                StrangeAuth.makeActions({});
+            }).to.throw('You must at least specify a login callback.');
+
+            done();
+        });
+
+        it('has a default logout strategy.', (done) => {
+
+            const actions = StrangeAuth.makeActions({
+                login: () => Promise.resolve({ credentials: true })
+            });
+
+            const called = [];
+            const dispatch = (x) => called.push(x);
+
+            actions.logout()(dispatch);
+
+            expect(called).to.equal([
+                {
+                    type: Types.LOGOUT_ATTEMPT,
+                    payload: []
+                },
+                {
+                    type: Types.LOGOUT_SUCCESS,
+                    payload: null
+                }
+            ]);
+
+            done();
+        });
 
         it('accepts a function returning a promise for login.', (done) => {
 
@@ -280,6 +313,171 @@ describe('strange-auth', () => {
                     error: true
                 }
             ]);
+
+            done();
+        });
+    });
+
+    describe('reducer', () => {
+
+        const actions = StrangeAuth.makeActions({
+            login: () => Promise.resolve({ credentials: true })
+        });
+
+        it('accepts custom initial state through makeReducer().', (done) => {
+
+            const reducer = StrangeAuth.makeReducer({
+                customProp: true,
+                artifacts: { custom: true }
+            });
+
+            expect(reducer(null, {})).to.equal({
+                status: Statuses.INIT,
+                isAuthenticated: false,
+                credentials: {},
+                artifacts: { custom: true },
+                error: {
+                    login: false,
+                    logout: false
+                },
+                customProp: true
+            });
+
+            done();
+        });
+
+        it('handles login attempt.', (done) => {
+
+            const reducer = StrangeAuth.makeReducer();
+            const action = actions.loginAttempt();
+
+            expect(reducer(null, action)).to.equal({
+                status: Statuses.WAITING,
+                isAuthenticated: false,
+                credentials: {},
+                artifacts: {},
+                error: {
+                    login: false,
+                    logout: false
+                }
+            });
+
+            done();
+        });
+
+        it('handles login success.', (done) => {
+
+            const reducer = StrangeAuth.makeReducer({
+                error: { login: true, logout: false }
+            });
+            const attempt = actions.loginAttempt();
+            const success = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
+
+            const state = reducer(reducer(null, attempt), success);
+
+            expect(state).to.equal({
+                status: Statuses.FINISHED,
+                isAuthenticated: true,
+                credentials: 'creds',
+                artifacts: 'arts',
+                error: {
+                    login: false, // Cleared
+                    logout: false
+                }
+            });
+
+            done();
+        });
+
+        it('handles login failure.', (done) => {
+
+            const reducer = StrangeAuth.makeReducer();
+            const attempt = actions.loginAttempt();
+            const fail = actions.loginFail(new Error('bad'));
+
+            const state = reducer(reducer(null, attempt), fail);
+
+            expect(state).to.equal({
+                status: Statuses.FINISHED,
+                isAuthenticated: false,
+                credentials: {},
+                artifacts: {},
+                error: {
+                    login: true,
+                    logout: false
+                }
+            });
+
+            done();
+        });
+
+        it('handles logout attempt.', (done) => {
+
+            const reducer = StrangeAuth.makeReducer();
+            const login = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
+            const attemptLogout = actions.logoutAttempt({ credentials: 'creds', artifacts: 'arts' });
+
+            const state = reducer(reducer(null, login), attemptLogout);
+
+            expect(state).to.equal({
+                status: Statuses.WAITING_LOGOUT,
+                isAuthenticated: false,
+                credentials: 'creds',
+                artifacts: 'arts',
+                error: {
+                    login: false,
+                    logout: false
+                }
+            });
+
+            done();
+        });
+
+        it('handles logout success.', (done) => {
+
+            const reducer = StrangeAuth.makeReducer({
+                error: { login: false, logout: true }
+            });
+            const login = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
+            const attemptLogout = actions.logoutAttempt({ credentials: 'creds', artifacts: 'arts' });
+            const succeedLogout = actions.logoutSuccess();
+
+            const state = reducer(reducer(reducer(null, login), attemptLogout), succeedLogout);
+
+            expect(state).to.equal({
+                status: Statuses.FINISHED,
+                isAuthenticated: false,
+                credentials: {},
+                artifacts: {},
+                error: {
+                    login: false,
+                    logout: false // Cleared
+                }
+            });
+
+            done();
+        });
+
+        it('handles logout error.', (done) => {
+
+
+            const reducer = StrangeAuth.makeReducer();
+            const login = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
+            const attemptLogout = actions.logoutAttempt({ credentials: 'creds', artifacts: 'arts' });
+            const failLogout = actions.logoutFail(new Error('bad'));
+
+            const state = reducer(reducer(reducer(null, login), attemptLogout), failLogout);
+
+            expect(state).to.equal({
+                status: Statuses.FINISHED,
+                isAuthenticated: false,
+                credentials: 'creds',
+                artifacts: 'arts',
+                error: {
+                    login: false,
+                    logout: true
+                }
+            });
 
             done();
         });

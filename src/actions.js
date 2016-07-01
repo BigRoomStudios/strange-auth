@@ -95,7 +95,7 @@ module.exports = ({ login, logout }) => {
                         return dispatch(actions.logoutFail(err));
                     }
 
-                    return dispatch(actions.logoutSuccess(info));
+                    return dispatch(actions.logoutSuccess(info || null));
                 });
             };
         }
