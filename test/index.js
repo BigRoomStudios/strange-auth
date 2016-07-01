@@ -4,7 +4,7 @@
 
 const Lab = require('lab');
 const Code = require('code');
-const StrangeAuth = require('..');
+const StrangeAuth = require('../src');
 const Types = StrangeAuth.types;
 const Statuses = StrangeAuth.statuses;
 
@@ -36,7 +36,7 @@ describe('strange-auth', () => {
         });
     });
 
-    describe('statuses', () => {
+    describe('auth statuses', () => {
 
         it('exist and are namespaced.', (done) => {
 
@@ -53,7 +53,7 @@ describe('strange-auth', () => {
 
     describe('makeActions()', () => {
 
-        it('complains if you don\'t implement login', (done) => {
+        it('complains if you don\'t implement login.', (done) => {
 
             expect(() => {
 
@@ -316,6 +316,28 @@ describe('strange-auth', () => {
 
             done();
         });
+
+        it('complains if you handle a promise and a callback.', (done) => {
+
+            const actions = StrangeAuth.makeActions({
+                login: (cb) => {
+
+                    cb(null, {});
+                    return Promise.resolve({});
+                }
+            });
+
+            actions.login()(() => null)
+            .then(() => {
+
+                done(new Error('Shouldn\'t make it here'));
+            })
+            .catch((err) => {
+
+                expect(err.message).to.equal('You might be doing something weird.  The login or logout callback was called twice.');
+                done();
+            });
+        });
     });
 
     describe('reducer', () => {
@@ -365,7 +387,7 @@ describe('strange-auth', () => {
             done();
         });
 
-        it('handles login success.', (done) => {
+        it('handles login success with creds.', (done) => {
 
             const reducer = StrangeAuth.makeReducer({
                 error: { login: true, logout: false }
@@ -382,6 +404,30 @@ describe('strange-auth', () => {
                 artifacts: 'arts',
                 error: {
                     login: false, // Cleared
+                    logout: false
+                }
+            });
+
+            done();
+        });
+
+        it('handles login success without creds.', (done) => {
+
+            const reducer = StrangeAuth.makeReducer({
+                error: { login: true, logout: false }
+            });
+            const attempt = actions.loginAttempt();
+            const success = actions.loginSuccess({});
+
+            const state = reducer(reducer(null, attempt), success);
+
+            expect(state).to.equal({
+                status: Statuses.FINISHED,
+                isAuthenticated: true,
+                credentials: {},  // Default
+                artifacts: {},    // Default
+                error: {
+                    login: false,
                     logout: false
                 }
             });
@@ -415,7 +461,7 @@ describe('strange-auth', () => {
 
             const reducer = StrangeAuth.makeReducer();
             const login = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
-            const attemptLogout = actions.logoutAttempt({ credentials: 'creds', artifacts: 'arts' });
+            const attemptLogout = actions.logoutAttempt();
 
             const state = reducer(reducer(null, login), attemptLogout);
 
@@ -439,7 +485,7 @@ describe('strange-auth', () => {
                 error: { login: false, logout: true }
             });
             const login = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
-            const attemptLogout = actions.logoutAttempt({ credentials: 'creds', artifacts: 'arts' });
+            const attemptLogout = actions.logoutAttempt();
             const succeedLogout = actions.logoutSuccess();
 
             const state = reducer(reducer(reducer(null, login), attemptLogout), succeedLogout);
@@ -460,10 +506,9 @@ describe('strange-auth', () => {
 
         it('handles logout error.', (done) => {
 
-
             const reducer = StrangeAuth.makeReducer();
             const login = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
-            const attemptLogout = actions.logoutAttempt({ credentials: 'creds', artifacts: 'arts' });
+            const attemptLogout = actions.logoutAttempt();
             const failLogout = actions.logoutFail(new Error('bad'));
 
             const state = reducer(reducer(reducer(null, login), attemptLogout), failLogout);

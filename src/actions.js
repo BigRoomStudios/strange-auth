@@ -108,7 +108,7 @@ internals.wrapToUseCallback = (fn) => {
 
     return (...args) => {
 
-        const cb = args.pop(); // Pop last param off args– should be the callback
+        const cb = args.pop(); // Pop last param off args– will be the callback
 
         let called = false;
         const onceCb = (err, result) => {
