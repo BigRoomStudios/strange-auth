@@ -1,6 +1,6 @@
 {
   "name": "strange-auth",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Redux toolkit for auth",
   "main": "lib/index.js",
   "scripts": {
