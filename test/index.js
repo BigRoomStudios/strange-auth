@@ -2,9 +2,10 @@
 
 // Load modules
 
-const Lab = require('lab');
-const Code = require('code');
+const Lab = require('@hapi/lab');
+const Code = require('@hapi/code');
 const StrangeAuth = require('../src');
+
 const Types = StrangeAuth.types;
 const Statuses = StrangeAuth.statuses;
 
@@ -21,7 +22,7 @@ describe('strange-auth', () => {
 
     describe('action types', () => {
 
-        it('exist and are namespaced.', (done) => {
+        it('exist and are namespaced.', () => {
 
             expect(Types).to.equal({
                 LOGIN_ATTEMPT: '@@auth/LOGIN_ATTEMPT',
@@ -31,14 +32,12 @@ describe('strange-auth', () => {
                 LOGOUT_SUCCESS: '@@auth/LOGOUT_SUCCESS',
                 LOGOUT_FAIL: '@@auth/LOGOUT_FAIL'
             });
-
-            done();
         });
     });
 
     describe('auth statuses', () => {
 
-        it('exist and are namespaced.', (done) => {
+        it('exist and are namespaced.', () => {
 
             expect(Statuses).to.equal({
                 INIT: '@@auth-status/INIT',
@@ -46,24 +45,20 @@ describe('strange-auth', () => {
                 WAITING_LOGOUT: '@@auth-status/WAITING_LOGOUT',
                 FINISHED: '@@auth-status/FINISHED'
             });
-
-            done();
         });
     });
 
     describe('makeActions()', () => {
 
-        it('complains if you don\'t implement login.', (done) => {
+        it('complains if you don\'t implement login.', () => {
 
             expect(() => {
 
                 StrangeAuth.makeActions({});
             }).to.throw('You must at least specify a login callback.');
-
-            done();
         });
 
-        it('has a default logout strategy.', (done) => {
+        it('has a default logout strategy.', () => {
 
             const actions = StrangeAuth.makeActions({
                 login: () => Promise.resolve({ credentials: true })
@@ -84,11 +79,9 @@ describe('strange-auth', () => {
                     payload: null
                 }
             ]);
-
-            done();
         });
 
-        it('accepts a function returning a promise for login.', (done) => {
+        it('accepts a function returning a promise for login.', () => {
 
             const actions = StrangeAuth.makeActions({
                 login: (username, password) => {
@@ -99,7 +92,7 @@ describe('strange-auth', () => {
 
                     return Promise.resolve({
                         credentials: {
-                            username: username,
+                            username,
                             password: password.replace(/./g, '*')
                         },
                         artifacts: { passed: true }
@@ -111,50 +104,81 @@ describe('strange-auth', () => {
             const dispatch = (x) => called.push(x);
 
             actions.login('don-moe', 'big-secret')(dispatch)
-            .then(() => {
+                .then(() => {
 
-                expect(called).to.equal([
-                    {
-                        type: Types.LOGIN_ATTEMPT,
-                        payload: ['don-moe', 'big-secret']
-                    },
-                    {
-                        type: Types.LOGIN_SUCCESS,
-                        payload: {
-                            credentials: {
-                                username: 'don-moe',
-                                password: '**********'
-                            },
-                            artifacts: { passed: true }
+                    expect(called).to.equal([
+                        {
+                            type: Types.LOGIN_ATTEMPT,
+                            payload: ['don-moe', 'big-secret']
+                        },
+                        {
+                            type: Types.LOGIN_SUCCESS,
+                            payload: {
+                                credentials: {
+                                    username: 'don-moe',
+                                    password: '**********'
+                                },
+                                artifacts: { passed: true }
+                            }
                         }
-                    }
-                ]);
+                    ]);
 
-                called = [];
-                return actions.login('bad-moe', 'bad-secret')(dispatch);
-            })
-            .catch((err) => {
+                    called = [];
+                    return actions.login('bad-moe', 'bad-secret')(dispatch);
+                })
+                .catch((err) => {
 
-                expect(err.message).to.equal('bad user');
+                    expect(err.message).to.equal('bad user');
 
-                expect(called).to.equal([
-                    {
-                        type: Types.LOGIN_ATTEMPT,
-                        payload: ['bad-moe', 'bad-secret']
-                    },
-                    {
-                        type: Types.LOGIN_FAIL,
-                        payload: new Error('bad user'),
-                        error: true
-                    }
-                ]);
-
-                done();
-            })
-            .catch((err) => done(err || new Error('Shouldn\'t make it here')));
+                    expect(called).to.equal([
+                        {
+                            type: Types.LOGIN_ATTEMPT,
+                            payload: ['bad-moe', 'bad-secret']
+                        },
+                        {
+                            type: Types.LOGIN_FAIL,
+                            payload: new Error('bad user'),
+                            error: true
+                        }
+                    ]);
+                });
         });
 
-        it('accepts a function with a callback for login.', (done) => {
+        it('bails early if thenable returned doesn\'t behave like a Promise', (flags) => {
+
+            const actions = StrangeAuth.makeActions({
+                login: (username, password) => {
+
+                    if (username !== 'don-moe') {
+                        return Promise.reject(new Error('bad user'));
+                    }
+
+                    // Missing a callback, but returns a non-Promise-compliant thenable
+                    return {
+                        credentials: {
+                            username,
+                            password: password.replace(/./g, '*')
+                        },
+                        artifacts: { passed: true },
+                        then: 'not a function'
+                    };
+                }
+            });
+
+            const called = [];
+            const dispatch = (x) => called.push(x);
+
+            const brokenPromise = actions.login('don-moe', 'big-secret')(dispatch);
+            expect(called).to.equal([
+                {
+                    type: Types.LOGIN_ATTEMPT,
+                    payload: ['don-moe', 'big-secret']
+                }
+            ]);
+            expect(() => brokenPromise.then()).to.throw(TypeError, 'Cannot read property \'then\' of undefined');
+        });
+
+        it('accepts a function with a callback for login.', () => {
 
             const actions = StrangeAuth.makeActions({
                 login: (username, password, cb) => {
@@ -165,7 +189,7 @@ describe('strange-auth', () => {
 
                     return cb(null, {
                         credentials: {
-                            username: username,
+                            username,
                             password: password.replace(/./g, '*')
                         },
                         artifacts: { passed: true }
@@ -209,11 +233,9 @@ describe('strange-auth', () => {
                     error: true
                 }
             ]);
-
-            done();
         });
 
-        it('accepts a function returning a promise for logout.', (done) => {
+        it('accepts a function returning a promise for logout.', () => {
 
             const actions = StrangeAuth.makeActions({
                 login: (cb) => cb(null),
@@ -232,44 +254,41 @@ describe('strange-auth', () => {
             const dispatch = (x) => called.push(x);
 
             actions.logout(true)(dispatch)
-            .then(() => {
+                .then(() => {
 
-                expect(called).to.equal([
-                    {
-                        type: Types.LOGOUT_ATTEMPT,
-                        payload: [true]
-                    },
-                    {
-                        type: Types.LOGOUT_SUCCESS,
-                        payload: 'success'
-                    }
-                ]);
+                    expect(called).to.equal([
+                        {
+                            type: Types.LOGOUT_ATTEMPT,
+                            payload: [true]
+                        },
+                        {
+                            type: Types.LOGOUT_SUCCESS,
+                            payload: 'success'
+                        }
+                    ]);
 
-                called = [];
-                return actions.logout(false)(dispatch);
-            })
-            .catch((err) => {
+                    called = [];
+                    return actions.logout(false)(dispatch);
+                })
+                .catch((err) => {
 
-                expect(err.message).to.equal('not a good time');
+                    expect(err.message).to.equal('not a good time');
 
-                expect(called).to.equal([
-                    {
-                        type: Types.LOGOUT_ATTEMPT,
-                        payload: [false]
-                    },
-                    {
-                        type: Types.LOGOUT_FAIL,
-                        payload: new Error('not a good time'),
-                        error: true
-                    }
-                ]);
-
-                done();
-            })
-            .catch((err) => done(err || new Error('Shouldn\'t make it here')));
+                    expect(called).to.equal([
+                        {
+                            type: Types.LOGOUT_ATTEMPT,
+                            payload: [false]
+                        },
+                        {
+                            type: Types.LOGOUT_FAIL,
+                            payload: new Error('not a good time'),
+                            error: true
+                        }
+                    ]);
+                });
         });
 
-        it('accepts a function with a callback for logout.', (done) => {
+        it('accepts a function with a callback for logout.', () => {
 
             const actions = StrangeAuth.makeActions({
                 login: (cb) => cb(null),
@@ -313,11 +332,9 @@ describe('strange-auth', () => {
                     error: true
                 }
             ]);
-
-            done();
         });
 
-        it('complains if you handle a promise and a callback.', (done) => {
+        it('complains if you handle a promise and a callback.', () => {
 
             const actions = StrangeAuth.makeActions({
                 login: (cb) => {
@@ -328,15 +345,10 @@ describe('strange-auth', () => {
             });
 
             actions.login()(() => null)
-            .then(() => {
+                .catch((err) => {
 
-                done(new Error('Shouldn\'t make it here'));
-            })
-            .catch((err) => {
-
-                expect(err.message).to.equal('You might be doing something weird.  The login or logout callback was called twice.');
-                done();
-            });
+                    expect(err.message).to.equal('You might be doing something weird.  The login or logout callback was called twice.');
+                });
         });
     });
 
@@ -346,7 +358,7 @@ describe('strange-auth', () => {
             login: () => Promise.resolve({ credentials: true })
         });
 
-        it('accepts custom initial state through makeReducer().', (done) => {
+        it('accepts custom initial state through makeReducer().', () => {
 
             const reducer = StrangeAuth.makeReducer({
                 customProp: true,
@@ -364,11 +376,9 @@ describe('strange-auth', () => {
                 },
                 customProp: true
             });
-
-            done();
         });
 
-        it('handles login attempt.', (done) => {
+        it('handles login attempt.', () => {
 
             const reducer = StrangeAuth.makeReducer();
             const action = actions.loginAttempt();
@@ -383,11 +393,9 @@ describe('strange-auth', () => {
                     logout: false
                 }
             });
-
-            done();
         });
 
-        it('handles login success with creds.', (done) => {
+        it('handles login success with creds.', () => {
 
             const reducer = StrangeAuth.makeReducer({
                 error: { login: true, logout: false }
@@ -407,11 +415,9 @@ describe('strange-auth', () => {
                     logout: false
                 }
             });
-
-            done();
         });
 
-        it('handles login success without creds.', (done) => {
+        it('handles login success without creds.', () => {
 
             const reducer = StrangeAuth.makeReducer({
                 error: { login: true, logout: false }
@@ -431,11 +437,9 @@ describe('strange-auth', () => {
                     logout: false
                 }
             });
-
-            done();
         });
 
-        it('handles login failure.', (done) => {
+        it('handles login failure.', () => {
 
             const reducer = StrangeAuth.makeReducer();
             const attempt = actions.loginAttempt();
@@ -453,11 +457,9 @@ describe('strange-auth', () => {
                     logout: false
                 }
             });
-
-            done();
         });
 
-        it('handles logout attempt.', (done) => {
+        it('handles logout attempt.', () => {
 
             const reducer = StrangeAuth.makeReducer();
             const login = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
@@ -475,11 +477,9 @@ describe('strange-auth', () => {
                     logout: false
                 }
             });
-
-            done();
         });
 
-        it('handles logout success.', (done) => {
+        it('handles logout success.', () => {
 
             const reducer = StrangeAuth.makeReducer({
                 error: { login: false, logout: true }
@@ -500,11 +500,9 @@ describe('strange-auth', () => {
                     logout: false // Cleared
                 }
             });
-
-            done();
         });
 
-        it('handles logout error.', (done) => {
+        it('handles logout error.', () => {
 
             const reducer = StrangeAuth.makeReducer();
             const login = actions.loginSuccess({ credentials: 'creds', artifacts: 'arts' });
@@ -523,8 +521,6 @@ describe('strange-auth', () => {
                     logout: true
                 }
             });
-
-            done();
         });
     });
 });

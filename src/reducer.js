@@ -33,31 +33,31 @@ module.exports = (moreInitialState) => {
                 });
 
             case Types.LOGIN_SUCCESS:
-                {
-                    const error = Object.assign({}, state.error, {
-                        login: false
-                    });
+            {
+                const error = Object.assign({}, state.error, {
+                    login: false
+                });
 
-                    return Object.assign({}, state, {
-                        status: Statuses.FINISHED,
-                        isAuthenticated: true,
-                        credentials: payload.credentials || {},
-                        artifacts: payload.artifacts || {},
-                        error
-                    });
-                }
+                return Object.assign({}, state, {
+                    status: Statuses.FINISHED,
+                    isAuthenticated: true,
+                    credentials: payload.credentials || {},
+                    artifacts: payload.artifacts || {},
+                    error
+                });
+            }
 
             case Types.LOGIN_FAIL:
-                {
-                    const error = Object.assign({}, state.error, {
-                        login: true
-                    });
+            {
+                const error = Object.assign({}, state.error, {
+                    login: true
+                });
 
-                    return Object.assign({}, state, {
-                        status: Statuses.FINISHED,
-                        error
-                    });
-                }
+                return Object.assign({}, state, {
+                    status: Statuses.FINISHED,
+                    error
+                });
+            }
 
             case Types.LOGOUT_ATTEMPT:
                 return Object.assign({}, state, {
@@ -66,33 +66,33 @@ module.exports = (moreInitialState) => {
                 });
 
             case Types.LOGOUT_SUCCESS:
-                {
-                    // Clear logout error
-                    const error = Object.assign({}, state.error, {
-                        logout: false
-                    });
+            {
+                // Clear logout error
+                const error = Object.assign({}, state.error, {
+                    logout: false
+                });
 
-                    return Object.assign({}, state, {
-                        status: Statuses.FINISHED,
-                        isAuthenticated: false,
-                        credentials: {}, // Only at this point reset credentials/artifacts
-                        artifacts: {},
-                        error
-                    });
-                }
+                return Object.assign({}, state, {
+                    status: Statuses.FINISHED,
+                    isAuthenticated: false,
+                    credentials: {}, // Only at this point reset credentials/artifacts
+                    artifacts: {},
+                    error
+                });
+            }
 
             case Types.LOGOUT_FAIL:
-                {
-                    // Set logout error
-                    const error = Object.assign({}, state.error, {
-                        logout: true
-                    });
+            {
+                // Set logout error
+                const error = Object.assign({}, state.error, {
+                    logout: true
+                });
 
-                    return Object.assign({}, state, {
-                        status: Statuses.FINISHED,
-                        error
-                    });
-                }
+                return Object.assign({}, state, {
+                    status: Statuses.FINISHED,
+                    error
+                });
+            }
         }
 
         return state;
