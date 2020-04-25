@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/BigRoomStudios/strange-auth#readme",
   "peerDependencies": {
-    "redux": "4.x.x",
+    "redux": ">=3 <5",
     "redux-thunk": "2.x.x"
   },
   "devDependencies": {
